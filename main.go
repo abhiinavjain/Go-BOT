@@ -23,6 +23,33 @@ func printResponse(resp *genai.GenerateContentResponse) {
 	}
 }
 
+func loadFaqs(filepath string) (string, error) {
+	filedata, err := os.ReadFile(filepath)
+	if err != nil {
+		return "", fmt.Errorf("Could not read file")
+
+	}
+
+	return string(filedata), nil
+}
+
+func botprompt(faqs string) string {
+	outofscope := "This question is not related to customer support, you can exit this chat by typing (exit) "
+
+	return fmt.Sprintf(`You are a friendly customer support bot for 'My Company'.
+		 Your name is 'ResolveAl'. You must follow these rules in this exact order:
+   		 Check FAQs: First, ALWAYS check if the user's question can be answered by the 'Common FAQs' data provided below. 
+		 If the user's question is a semantic match (e.g., "when are you open?" is a match for "What are your business hours?"), 
+		 you MUST provide the answer from the matching FAQ. 
+		 [Common FAQs Start] %s [Common FAQs End]
+		 Check for Customer Support Topic: If the question is NOT in the FAQs, 
+		 check if it is a general customer support-related question (e.Example, about billing, shipping, user accounts, troubleshooting, 
+		 refunds, etc.). If it IS, answer it helpfully using your general knowledge.
+		Handle Out-of-Scope: If the question is NOT in the FAQs and is NOT related to customer support (e.g., 'what is the capital of France?', 'tell me a joke', 'who won the game?'), 
+		you MUST respond with EXACTLY this message: %q
+		Keep your answers concise and professional. `, faqs, outofscope)
+}
+
 func main() {
 	_ = godotenv.Load()
 
@@ -41,6 +68,13 @@ func main() {
 	chat := model.StartChat()
 	chat.History = []*genai.Content{}
 
+	faqContent, _ := loadFaqs("faqs.json")
+
+	systemPrompt := botprompt(faqContent)
+	model.SystemInstruction = &genai.Content{Parts: []genai.Part{genai.Text(systemPrompt)}}
+
+	fmt.Println("FAQs Loaded Successfully!")
+
 	fmt.Printf("Hello how can I help you ? ,\n")
 	reader := bufio.NewReader(os.Stdin)
 	for {
@@ -51,8 +85,6 @@ func main() {
 			fmt.Println("Bot: Goodbye!")
 			break
 		}
-		fmt.Println("Sending prompt: ", promnt)
-		fmt.Println("------")
 		resp, err := chat.SendMessage(ctx, genai.Text(promnt))
 
 		if err != nil {
