@@ -32,7 +32,8 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Post("/api/v1/chat", chathandler.HandleChat)
+	r.Post("/api/v1/session/{sessionID}", chathandler.HandleChat)
+	r.Post("/api/v1/session", chathandler.HandleCreateSession)
 
 	fmt.Println("Running server on :8081")
 	log.Fatal(http.ListenAndServe(":8081", r))

@@ -98,11 +98,6 @@ func (g *GeminiService) GetChatHistory(ctx context.Context, sessionId string) ([
 	return history, nil
 }
 
-func (s *GeminiService) StartChatsession() *genai.ChatSession {
-	return s.model.StartChat()
-
-}
-
 func loadFaqs(filepath string) (string, error) {
 	filedata, err := os.ReadFile(filepath)
 	if err != nil {
@@ -129,21 +124,45 @@ func botprompt(faqs string) string {
 		Keep your answers concise and professional. `, faqs, outofscope)
 }
 
-func (s *GeminiService) RespGenerator(ctx context.Context, promt string) (string, error) {
-	resp, err := s.model.GenerateContent(ctx, genai.Text(promt))
+func (s *GeminiService) RespGenerator(ctx context.Context, sessionID string, promt string) (string, error) {
+	history, err := s.GetChatHistory(ctx, sessionID)
+	if err != nil {
+		return "", err
+	}
+
+	err = s.AddMessageToHistory(ctx, sessionID, "user", promt)
+
+	if err != nil {
+		return "", err
+	}
+
+	chat := s.model.StartChat()
+
+	chat.History = history
+
+	resp, err := chat.SendMessage(ctx, genai.Text(promt))
 
 	if err != nil {
 		return "", fmt.Errorf("%v", err)
 	}
 
+	var botresp string
+
 	for _, cand := range resp.Candidates {
 		for _, part := range cand.Content.Parts {
 			if txt, ok := part.(genai.Text); ok {
-				return string(txt), nil
+				botresp = string(txt)
+				break
 			}
 		}
 	}
 
-	return "", err
+	err = s.AddMessageToHistory(ctx, sessionID, "model", botresp)
+
+	if err != nil {
+		return "", err
+	}
+
+	return botresp, err
 
 }
