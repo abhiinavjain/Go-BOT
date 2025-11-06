@@ -20,16 +20,14 @@ type GeminiService struct {
 	db    *pgxpool.Pool
 }
 
-func BotService(ctx context.Context, apikey string) (*GeminiService, error) {
+func BotService(ctx context.Context, apikey string, dbUrl string) (*GeminiService, error) {
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apikey))
 
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}
 
-	dbConstr := "postgres://postgres:mysecretpassword@localhost:5432/chatbot"
-
-	dbpool, err := pgxpool.New(ctx, dbConstr)
+	dbpool, err := pgxpool.New(ctx, dbUrl)
 
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)

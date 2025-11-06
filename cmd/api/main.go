@@ -22,7 +22,13 @@ func main() {
 		log.Fatal("API key is not present")
 	}
 
-	geminSvc, err := service.BotService(ctx, apiKey)
+	dbURL := os.Getenv("dbConstr")
+
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable is not set")
+	}
+
+	geminSvc, err := service.BotService(ctx, apiKey, dbURL)
 
 	if err != nil {
 		log.Fatal(err)
